@@ -76,12 +76,8 @@ const Landing = () => {
               </p>
               <div className="flex gap-10">
                 <motion.div whileHover={{ scale: 1.05 }}>
-                  <div className="text-3xl font-black text-slate-900">Odessa, MO</div>
+                  <div className="text-3xl font-black text-slate-900">Missouri, United States</div>
                   <div className="label">Headquarters</div>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.05 }}>
-                  <div className="text-3xl font-black text-slate-900">256-bit</div>
-                  <div className="label">Encryption</div>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.05 }}>
                   <div className="text-3xl font-black text-slate-900">99.9%</div>

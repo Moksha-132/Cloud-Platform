@@ -1,11 +1,55 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, MapPin, Send, Globe, MessageSquare, Clock } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, Globe, MessageSquare, Clock, Loader2, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import logo from '../assets/shnoor-logo.png';
 import Footer from '../components/Footer';
 
 const Contact = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    department: 'General Inquiry',
+    message: ''
+  });
+  const [status, setStatus] = useState('idle'); // idle, loading, success, error
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus('loading');
+    setErrorMessage('');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/contact/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setStatus('success');
+        setFormData({ name: '', email: '', department: 'General Inquiry', message: '' });
+        setTimeout(() => setStatus('idle'), 5000);
+      } else {
+        setStatus('error');
+        setErrorMessage(data.message || 'Something went wrong. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      setStatus('error');
+      setErrorMessage('Failed to connect to the server.');
+    }
+  };
+
   return (
     <div className="base">
       <nav className="gate">
@@ -80,34 +124,98 @@ const Contact = () => {
                 <h2 className="sub text-3xl">Send a Message</h2>
                 <p className="body">Our engineers will get back to you shortly.</p>
               </div>
-              <form className="grid md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <label className="label">Full Name</label>
-                  <input type="text" placeholder="John Doe" className="soil" />
-                </div>
-                <div className="space-y-2">
-                  <label className="label">Email Address</label>
-                  <input type="email" placeholder="john@example.com" className="soil" />
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="label">Department</label>
-                  <select className="soil">
-                    <option>General Inquiry</option>
-                    <option>Technical Support</option>
-                    <option>Enterprise Sales</option>
-                    <option>Media & Press</option>
-                  </select>
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="label">Message</label>
-                  <textarea placeholder="How can we help your business?" className="soil h-48 resize-none"></textarea>
-                </div>
-                <div className="md:col-span-2">
-                  <button className="root w-full justify-center">
-                    Send Message <Send size={20} />
+
+              {status === 'success' ? (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }} 
+                  animate={{ opacity: 1, scale: 1 }} 
+                  className="bg-emerald-50 border border-emerald-100 p-12 rounded-[2rem] text-center space-y-4"
+                >
+                  <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle2 size={40} />
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-900">Message Received!</h3>
+                  <p className="text-slate-600">Thank you for reaching out. We've received your inquiry and our team will get back to you within 15 minutes.</p>
+                  <button 
+                    onClick={() => setStatus('idle')}
+                    className="mt-8 text-amber-600 font-bold hover:underline"
+                  >
+                    Send another message
                   </button>
-                </div>
-              </form>
+                </motion.div>
+              ) : (
+                <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="label">Full Name</label>
+                    <input 
+                      type="text" 
+                      name="name"
+                      required
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="John Doe" 
+                      className="soil" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="label">Email Address</label>
+                    <input 
+                      type="email" 
+                      name="email"
+                      required
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="john@example.com" 
+                      className="soil" 
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="label">Department</label>
+                    <select 
+                      name="department"
+                      value={formData.department}
+                      onChange={handleChange}
+                      className="soil"
+                    >
+                      <option>General Inquiry</option>
+                      <option>Technical Support</option>
+                      <option>Enterprise Sales</option>
+                      <option>Media & Press</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="label">Message</label>
+                    <textarea 
+                      name="message"
+                      required
+                      value={formData.message}
+                      onChange={handleChange}
+                      placeholder="How can we help your business?" 
+                      className="soil h-48 resize-none"
+                    ></textarea>
+                  </div>
+
+                  {status === 'error' && (
+                    <div className="md:col-span-2 p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold">
+                      {errorMessage}
+                    </div>
+                  )}
+
+                  <div className="md:col-span-2">
+                    <button 
+                      type="submit" 
+                      disabled={status === 'loading'}
+                      className="root w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {status === 'loading' ? (
+                        <>Sending... <Loader2 className="animate-spin" size={20} /></>
+                      ) : (
+                        <>Send Message <Send size={20} /></>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
             </motion.div>
           </div>
 

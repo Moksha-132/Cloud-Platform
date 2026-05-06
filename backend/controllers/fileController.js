@@ -4,7 +4,7 @@ const User = require('../models/User');
 exports.uploadFile = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
+      return res.status(400).json({ message: 'File required' });
     }
     const { parentId } = req.body;
     const file = await File.create({
@@ -23,7 +23,7 @@ exports.uploadFile = async (req, res) => {
 
     res.status(201).json(file);
   } catch (e) {
-    res.status(500).json({ message: e.message });
+    res.status(500).json({ message: 'Upload failed' });
   }
 };
 
@@ -145,9 +145,17 @@ exports.share = async (req, res) => {
 exports.getFileByToken = async (req, res) => {
   try {
     const { token } = req.params;
-    const file = await File.findOne({ shareToken: token, isDeleted: false });
-    if (!file) return res.status(404).json({ message: 'File not found or link expired' });
-    res.json(file);
+    const item = await File.findOne({ shareToken: token, isDeleted: false });
+    if (!item) return res.status(404).json({ message: 'Link invalid' });
+    
+    let result = { ...item.toObject() };
+    
+    if (item.type === 'folder') {
+      const children = await File.find({ parentId: item._id, isDeleted: false });
+      result.children = children;
+    }
+    
+    res.json(result);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
@@ -156,14 +164,25 @@ exports.getFileByToken = async (req, res) => {
 exports.renameByToken = async (req, res) => {
   try {
     const { token, name } = req.body;
-    const file = await File.findOne({ shareToken: token, isDeleted: false });
+    const item = await File.findOne({ shareToken: token, isDeleted: false });
     
-    if (!file) return res.status(404).json({ message: 'File not found' });
-    if (file.sharePermission !== 'edit') return res.status(403).json({ message: 'Permission denied' });
+    if (!item) return res.status(404).json({ message: 'Item not found' });
+    if (item.sharePermission !== 'edit') return res.status(403).json({ message: 'Permission denied' });
 
-    file.name = name;
-    await file.save();
-    res.json(file);
+    item.name = name;
+    await item.save();
+
+    const io = req.app.get('socketio');
+    if (io) {
+      io.emit('shared_item_modified', { 
+        type: 'rename', 
+        name: item.name, 
+        ownerId: item.ownerId,
+        itemType: item.type 
+      });
+    }
+
+    res.json(item);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
@@ -197,13 +216,21 @@ exports.restoreFile = async (req, res) => {
   }
 };
 
+exports.getFileById = async (req, res) => {
+  try {
+    const file = await File.findOne({ _id: req.params.id, ownerId: req.user.id });
+    if (!file) return res.status(404).json({ message: 'File not found' });
+    res.json(file);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
 exports.updateContent = async (req, res) => {
   try {
     const { id, content } = req.body;
     const file = await File.findOne({ _id: id, ownerId: req.user.id });
     if (!file) return res.status(404).json({ message: 'File not found' });
-
-    // Re-upload to Cloudinary
     const cloudinary = require('../config/cloudinary').cloudinary;
     const result = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -217,7 +244,18 @@ exports.updateContent = async (req, res) => {
     });
 
     file.size = Buffer.from(content).length;
+    file.url = result.secure_url;
     await file.save();
+
+    const io = req.app.get('socketio');
+    if (io) {
+      io.emit('shared_item_modified', { 
+        type: 'edit', 
+        name: file.name, 
+        ownerId: file.ownerId,
+        itemType: file.type 
+      });
+    }
 
     res.json(file);
   } catch (e) {
@@ -232,8 +270,6 @@ exports.updateContentByToken = async (req, res) => {
     
     if (!file) return res.status(404).json({ message: 'File not found' });
     if (file.sharePermission !== 'edit') return res.status(403).json({ message: 'Permission denied' });
-
-    // Re-upload to Cloudinary
     const cloudinary = require('../config/cloudinary').cloudinary;
     const result = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -247,7 +283,18 @@ exports.updateContentByToken = async (req, res) => {
     });
 
     file.size = Buffer.from(content).length;
+    file.url = result.secure_url;
     await file.save();
+
+    const io = req.app.get('socketio');
+    if (io) {
+      io.emit('shared_item_modified', { 
+        type: 'edit', 
+        name: file.name, 
+        ownerId: file.ownerId,
+        itemType: file.type 
+      });
+    }
 
     res.json(file);
   } catch (e) {

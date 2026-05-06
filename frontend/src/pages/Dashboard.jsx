@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '../assets/shnoor-logo.png';
-import { getFiles, uploadFile, createFolder, renameFile, deleteFile, shareFile, toggleStar, restoreFile, deleteForever, updateFileContent } from '../api/files';
+import { getFiles, uploadFile, createFolder, renameFile, deleteFile, shareFile, toggleStar, restoreFile, deleteForever, updateFileContent, moveFile } from '../api/files';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -28,6 +28,8 @@ const Dashboard = () => {
   const [previewText, setPreviewText] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [shareDialog, setShareDialog] = useState(null);
+  const [moveDialog, setMoveDialog] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -139,6 +141,18 @@ const Dashboard = () => {
     }
   };
 
+  const handleMove = async (targetFolderId) => {
+    if (!moveDialog) return;
+    try {
+      await moveFile(moveDialog._id, targetFolderId);
+      await fetchFiles();
+      setMoveDialog(null);
+      alert('Asset moved successfully!');
+    } catch (e) {
+      alert('Move failed: ' + e.message);
+    }
+  };
+
   const handleToggleStar = async (id) => {
     setFiles(prev => prev.map(f => f._id === id ? { ...f, isStarred: !f.isStarred } : f));
     try {
@@ -184,13 +198,27 @@ const Dashboard = () => {
     navigate('/login');
   };
   
-  const handlePreview = (item) => {
-    setPreviewItem(item);
+  const handlePreview = async (item) => {
+    setIsEditing(false);
+    setPreviewText('Synchronizing vault buffer...');
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/files/${item._id}`, {
+        headers: { 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('shnoor_user')).token}` }
+      });
+      const latest = await res.json();
+      setPreviewItem(latest);
+    } catch (e) {
+      console.error('Meta sync failed', e);
+      setPreviewItem(item);
+    }
   };
 
-  const getDownloadUrl = (url, name) => {
-    if (!url.includes('cloudinary.com')) return url;
-    return url.replace('/upload/', `/upload/fl_attachment:${encodeURIComponent(name)}/`);
+  const getDownloadUrl = (item) => {
+    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const user = JSON.parse(localStorage.getItem('shnoor_user') || '{}');
+    const token = user.token;
+    const type = item.type === 'folder' ? 'folder' : 'file';
+    return `${apiBase}/files/download/${type}/${item._id}?token=${token}`;
   };
 
   const enterFolder = (folder) => {
@@ -267,7 +295,7 @@ const Dashboard = () => {
         </div>
       </aside>
 
-      <main className="deck bg-white">
+      <div className="deck bg-white flex-1 flex flex-col overflow-hidden">
         <header className="bar border-b border-slate-50">
           <div className="relative w-full max-w-xl">
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
@@ -294,7 +322,7 @@ const Dashboard = () => {
           </div>
         </header>
 
-        <div className="main">
+        <main className="main">
           <div className="mb-12 flex justify-between items-end">
             <div className="flex items-center gap-6">
                {parentId && (
@@ -368,6 +396,9 @@ const Dashboard = () => {
                                     <button onClick={() => confirmShare(item)} className="w-full flex items-center gap-3 px-6 py-4 hover:bg-slate-50 text-sm font-bold text-slate-600 border-t border-slate-50">
                                       <LinkIcon size={16} /> Share Link
                                     </button>
+                                    <button onClick={() => setMoveDialog(item)} className="w-full flex items-center gap-3 px-6 py-4 hover:bg-slate-50 text-sm font-bold text-slate-600 border-t border-slate-50">
+                                      <Move size={16} /> Move to Folder
+                                    </button>
                                     <button onClick={() => handleDelete(item._id)} className="w-full flex items-center gap-3 px-6 py-4 hover:bg-red-50 text-sm font-bold text-red-500 border-t border-slate-50">
                                       <Trash2 size={16} /> Delete
                                     </button>
@@ -384,12 +415,10 @@ const Dashboard = () => {
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                       {item.type === 'folder' ? 'Vault Folder' : item.size < 1024 ? `${item.size} B` : `${(item.size / 1024).toFixed(1)} KB`}
                     </p>
-                    {item.type === 'file' && (
-                      <div className="flex gap-2">
+                    <div className="flex gap-2">
                         <button onClick={() => handlePreview(item)} className="p-2 text-slate-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"><Eye size={18} /></button>
-                        <a href={getDownloadUrl(item.url, item.name)} target="_blank" rel="noreferrer" className="p-2 text-slate-400 hover:text-amber-500 opacity-0 group-hover:opacity-100 transition-all"><Download size={18} /></a>
+                        <a href={getDownloadUrl(item)} target="_blank" rel="noreferrer" className="p-2 text-slate-400 hover:text-amber-500 opacity-0 group-hover:opacity-100 transition-all"><Download size={18} /></a>
                       </div>
-                    )}
                   </div>
                 </motion.div>
               ))}
@@ -449,7 +478,7 @@ const Dashboard = () => {
               </table>
             </div>
           )}
-        </div>
+        </main>
 
       <AnimatePresence>
         {previewItem && (
@@ -517,7 +546,7 @@ const Dashboard = () => {
                    )}
                 </div>
                 <div className="flex gap-4">
-                  <a href={getDownloadUrl(previewItem.url, previewItem.name)} target="_blank" rel="noreferrer" className="root-sm bg-slate-100 text-slate-600 hover:bg-slate-200">
+                  <a href={getDownloadUrl(previewItem)} target="_blank" rel="noreferrer" className="root-sm bg-slate-100 text-slate-600 hover:bg-slate-200">
                     <Download size={18} /> Download
                   </a>
                   <button onClick={() => { setPreviewItem(null); setIsEditing(false); }} className="root-sm">
@@ -589,8 +618,39 @@ const Dashboard = () => {
           </motion.div>
         )}
       </AnimatePresence>
-      </main>
-    </div>
+      <AnimatePresence>
+        {moveDialog && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-10">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white w-full max-w-lg rounded-[3rem] overflow-hidden flex flex-col relative">
+              <div className="px-10 pt-10 pb-6 text-center">
+                <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+                  <Move size={40} />
+                </div>
+                <h3 className="font-black text-slate-900 text-3xl tracking-tighter">Move Asset</h3>
+                <p className="text-slate-400 font-medium mt-2">Select destination for <span className="text-slate-900 font-bold">{moveDialog.name}</span></p>
+              </div>
+              <div className="px-10 pb-10 space-y-3 max-h-[400px] overflow-auto">
+                <button onClick={() => handleMove('')} className="w-full flex items-center gap-4 p-5 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-all text-left font-bold text-slate-600">
+                  <HardDrive size={18} /> Root Directory (My Files)
+                </button>
+                {files.filter(f => f.type === 'folder' && f._id !== moveDialog._id).map(folder => (
+                  <button key={folder._id} onClick={() => handleMove(folder._id)} className="w-full flex items-center gap-4 p-5 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-all text-left font-bold text-slate-600">
+                    <Folder size={18} className="text-amber-500" /> {folder.name}
+                  </button>
+                ))}
+                {files.filter(f => f.type === 'folder').length === 0 && (
+                  <p className="text-center py-10 text-slate-400 font-medium text-sm italic">No other folders available</p>
+                )}
+                <button onClick={() => setMoveDialog(null)} className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-900 transition-colors border-t border-slate-50 mt-4">
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      </div>
+    </div> 
   );
 };
 

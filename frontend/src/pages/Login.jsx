@@ -49,7 +49,7 @@ const Login = () => {
           <img src={logo} alt="Shnoor" className="h-10 w-auto" />
           <div className="flex flex-col leading-tight">
             <span className="text-xl font-black tracking-tight text-slate-900">SHNOOR <span className="text-amber-500">INTERNATIONAL</span></span>
-            <span className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">Trade Intelligence System</span>
+            <span className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase"> Cloud Platform</span>
           </div>
         </Link>
         <Link to="/" className="bg-white hover:bg-slate-50 text-slate-600 border border-slate-100 py-3 px-8 rounded-full font-bold text-sm flex items-center gap-2 transition-all shadow-sm">
@@ -77,7 +77,7 @@ const Login = () => {
                  <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600">
                     <ShieldCheck size={24} />
                  </div>
-                 <span className="font-black text-slate-900 uppercase tracking-wide text-xs">Certified Secure Node: Odessa-MO</span>
+                 <span className="font-black text-slate-900 uppercase tracking-wide text-xs">Certified Secure Node: Missouri, United States</span>
               </div>
             </div>
           </motion.div>
@@ -85,10 +85,10 @@ const Login = () => {
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-16 rounded-[4rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)] border border-slate-100 max-w-xl mx-auto w-full relative">
             <div className="mb-12">
               <div className="flex items-center gap-2 text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] mb-4">
-                 <ShieldCheck size={14} /> Cloud Intelligence Portal
+                 <ShieldCheck size={14} />
               </div>
               <h2 className="text-5xl font-black text-slate-900 mb-4 tracking-tight">Verify Identity</h2>
-              <p className="text-slate-500 font-medium">Enter your credentials to access the Shnoor Cloud Ecosystem.</p>
+              <p className="text-slate-500 font-medium">Enter your credentials to access the Shnoor Cloud Platform.</p>
             </div>
 
             {error && <div className="bg-red-50 text-red-600 p-5 rounded-2xl text-sm font-bold mb-8 border border-red-100">{error}</div>}
@@ -110,12 +110,8 @@ const Login = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-3 text-sm font-bold text-slate-500 cursor-pointer">
-                  <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500" />
-                  Remember me
-                </label>
-                <Link to="#" className="text-sm font-bold text-amber-600 hover:text-amber-700">Forgot password?</Link>
+              <div className="flex items-center justify-end">
+                <Link to="/forgot-password" name="forgot-password" id="forgot-password" className="text-sm font-bold text-amber-600 hover:text-amber-700">Forgot password?</Link>
               </div>
 
               <div className="pt-4 border-t border-slate-50">
@@ -130,15 +126,6 @@ const Login = () => {
               </button>
             </form>
 
-            <div className="mt-8 space-y-4">
-              <div className="relative flex items-center justify-center">
-                <div className="w-full border-t border-slate-100" />
-                <span className="absolute bg-white px-4 text-[10px] font-black text-slate-300 uppercase tracking-widest">Or continue with</span>
-              </div>
-              <button className="w-full py-5 bg-white border border-slate-100 hover:bg-slate-50 text-slate-900 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 transition-all">
-                <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" /> Sign in with Google
-              </button>
-            </div>
 
             <div className="mt-10 pt-8 border-t border-slate-50 text-center">
               <p className="text-sm font-bold text-slate-400">

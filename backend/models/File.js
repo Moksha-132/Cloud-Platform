@@ -66,7 +66,5 @@ const schema = new mongoose.Schema({
     default: 'view'
   }
 }, { timestamps: true });
-
 schema.index({ name: 'text' });
-
 module.exports = mongoose.model('File', schema);

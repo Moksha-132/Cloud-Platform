@@ -8,10 +8,14 @@ import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import Dashboard from './pages/Dashboard'
 import Share from './pages/Share'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
+import NotificationHandler from './components/NotificationHandler'
 
 function App() {
   return (
     <Router>
+      <NotificationHandler />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/how-it-works" element={<Navigate to="/" />} />
@@ -22,6 +26,8 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/share/:token" element={<Share />} />
         <Route path="/dashboard" element={<Dashboard />} />
       </Routes>

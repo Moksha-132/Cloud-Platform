@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Download, Eye, Loader2, 
   ShieldCheck, Globe, AlertTriangle, 
-  X, ChevronLeft, Lock, Edit3, Save
+  X, ChevronLeft, Lock, Edit3, Save, Folder
 } from 'lucide-react';
 import { getSharedFile, renameSharedFile, updateSharedFileContent } from '../api/files';
 import logo from '../assets/shnoor-logo.png';
@@ -42,30 +42,18 @@ const Share = () => {
     }
   }, [previewOpen, file]);
 
-  const handleDownload = async (url, name) => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
-    } catch (e) {
-      window.open(url, '_blank');
-    }
+  const getDownloadUrl = () => {
+    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    return `${apiBase}/files/share/download/${token}`;
   };
 
   const handleRename = async () => {
-    const newName = prompt('Enter new filename:', file.name);
+    const newName = prompt(`Enter new ${file.type} name:`, file.name);
     if (!newName || newName === file.name) return;
 
     try {
       const updated = await renameSharedFile(token, newName);
-      setFile(updated);
+      setFile(prev => ({ ...prev, name: updated.name }));
     } catch (e) {
       alert(e.message);
     }
@@ -89,7 +77,7 @@ const Share = () => {
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-10 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#334155,transparent)] opacity-20" />
         <Loader2 className="animate-spin text-amber-500 mb-6 relative z-10" size={64} />
-        <p className="font-black text-white text-2xl tracking-tighter relative z-10">Decrypting Secure Vault...</p>
+        <p className="font-black text-white text-2xl tracking-tighter relative z-10">Decrypting...</p>
       </div>
     );
   }
@@ -100,9 +88,9 @@ const Share = () => {
         <div className="w-24 h-24 bg-red-100 text-red-600 rounded-[2.5rem] flex items-center justify-center mb-8">
           <AlertTriangle size={48} />
         </div>
-        <h1 className="font-black text-slate-900 text-4xl tracking-tighter mb-4">Link Expired or Invalid</h1>
-        <p className="text-slate-400 font-medium max-w-md mb-10">This secure link is no longer available. Please ask the owner to generate a new sharing link.</p>
-        <Link to="/" className="root-sm">Return Home</Link>
+        <h1 className="font-black text-slate-900 text-4xl tracking-tighter mb-4">Invalid Link</h1>
+        <p className="text-slate-400 font-medium max-w-md mb-10">This link is no longer available.</p>
+        <Link to="/" className="root-sm">Home</Link>
       </div>
     );
   }
@@ -125,46 +113,67 @@ const Share = () => {
         <motion.div 
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="bg-white w-full max-w-4xl rounded-[4rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden"
+          className="bg-white w-full max-w-6xl rounded-[4rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden"
         >
           <div className="grid lg:grid-cols-2">
             <div className="p-12 md:p-20 flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-slate-100">
-              <div className="w-24 h-24 bg-blue-50 text-blue-600 rounded-[2.5rem] flex items-center justify-center mb-10 shadow-inner">
-                <FileText size={48} />
+              <div className={`w-24 h-24 rounded-[2.5rem] flex items-center justify-center mb-10 shadow-inner ${file.type === 'folder' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                {file.type === 'folder' ? <Folder size={48} /> : <FileText size={48} />}
               </div>
               <h2 className="font-black text-slate-900 text-4xl md:text-5xl tracking-tighter mb-6 leading-none break-words">{file.name}</h2>
               <div className="flex flex-wrap items-center gap-3 mb-10">
-                <span className="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl font-black text-[10px] uppercase tracking-widest">{file.size < 1024 ? `${file.size} B` : `${(file.size / 1024).toFixed(1)} KB`}</span>
+                <span className="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl font-black text-[10px] uppercase tracking-widest">
+                  {file.type === 'folder' ? 'Cloud Folder' : (file.size < 1024 ? `${file.size} B` : `${(file.size / 1024).toFixed(1)} KB`)}
+                </span>
               </div>
+
+              {file.type === 'folder' && file.children && (
+                <div className="mt-4 space-y-4 max-h-[300px] overflow-auto pr-4 custom-scrollbar">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Contents</p>
+                  {file.children.map(child => (
+                    <div key={child._id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${child.type === 'folder' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
+                        {child.type === 'folder' ? <Folder size={20} /> : <FileText size={20} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-slate-900 truncate">{child.name}</p>
+                        <p className="text-[10px] text-slate-400 uppercase font-bold">{child.type}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="bg-slate-50 p-12 md:p-20 flex flex-col justify-center">
               <div className="space-y-6">
-                <button 
-                  onClick={() => setPreviewOpen(true)}
-                  className="w-full h-24 rounded-3xl bg-slate-900 text-white flex items-center justify-between px-10 group hover:bg-slate-800 transition-all shadow-xl"
-                >
-                  <div className="text-left">
-                    <p className="font-black text-xl tracking-tight">Preview Asset</p>
-                    <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">View in cloud browser</p>
-                  </div>
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Eye size={24} />
-                  </div>
-                </button>
+                {file.type === 'file' && (
+                  <button 
+                    onClick={() => setPreviewOpen(true)}
+                    className="w-full h-24 rounded-3xl bg-slate-900 text-white flex items-center justify-between px-10 group hover:bg-slate-800 transition-all shadow-xl"
+                  >
+                    <div className="text-left">
+                      <p className="font-black text-xl tracking-tight">Preview</p>
+                      <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Browser view</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Eye size={24} />
+                    </div>
+                  </button>
+                )}
 
-                <button 
-                  onClick={() => handleDownload(file.url, file.name)}
+                <a 
+                  href={getDownloadUrl()}
                   className="w-full h-24 rounded-3xl bg-white text-slate-900 border-2 border-slate-900 flex items-center justify-between px-10 group hover:bg-slate-50 transition-all shadow-sm"
                 >
                   <div className="text-left">
-                    <p className="font-black text-xl tracking-tight">Download File</p>
-                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Save to local device</p>
+                    <p className="font-black text-xl tracking-tight">Download</p>
+                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Save to device</p>
                   </div>
                   <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Download size={24} />
                   </div>
-                </button>
+                </a>
                 
                 {file.sharePermission === 'edit' && (
                   <button 
@@ -172,8 +181,8 @@ const Share = () => {
                     className="w-full h-24 rounded-3xl bg-amber-50 text-amber-600 border-2 border-amber-200 flex items-center justify-between px-10 group hover:bg-amber-100 transition-all shadow-sm"
                   >
                     <div className="text-left">
-                      <p className="font-black text-xl tracking-tight">Edit Filename</p>
-                      <p className="text-amber-400 text-[10px] font-bold uppercase tracking-widest">Update asset metadata</p>
+                      <p className="font-black text-xl tracking-tight">Rename</p>
+                      <p className="text-amber-400 text-[10px] font-bold uppercase tracking-widest">Update name</p>
                     </div>
                     <div className="w-12 h-12 rounded-2xl bg-amber-200/50 flex items-center justify-center group-hover:scale-110 transition-transform">
                       <Edit3 size={24} />
@@ -200,7 +209,7 @@ const Share = () => {
       </main>
 
       <AnimatePresence>
-        {previewOpen && (
+        {previewOpen && file.type === 'file' && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 md:p-10"

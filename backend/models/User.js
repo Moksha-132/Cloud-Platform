@@ -34,7 +34,9 @@ const schema = new mongoose.Schema({
   storageLimit: {
     type: Number,
     default: 104857600
-  }
+  },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date
 }, { timestamps: true });
 
 schema.pre('save', async function() {

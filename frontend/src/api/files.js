@@ -60,7 +60,7 @@ export const renameFile = async (id, name) => {
 };
 
 export const deleteFile = async (id) => {
-  const res = await fetch(`${BASE_URL}/${id}`, {
+  const res = await fetch(`${BASE_URL}/remove/${id}`, {
     method: 'DELETE',
     headers: getHeaders()
   });
