@@ -11,7 +11,7 @@ const NotificationHandler = () => {
       Notification.requestPermission();
     }
 
-    const socket = io('http://localhost:5000');
+    const socket = io({ path: '/_/backend/socket.io' });
     socket.on('new_contact_message', (data) => {
       const newNotification = {
         id: Date.now(),

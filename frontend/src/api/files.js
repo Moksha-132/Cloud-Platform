@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:5000/api/files';
+const BASE_URL = `${import.meta.env.VITE_API_URL}/files`;
 
 const getHeaders = () => {
   const user = JSON.parse(localStorage.getItem('shnoor_user'));
